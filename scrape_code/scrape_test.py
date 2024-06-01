@@ -16,7 +16,6 @@ headers = {'User-Agent':
 
 # Function used below while parsing match stats 
 def label_table_parse(labels, table):
-    
     row_step = []
     for row in table:
         val_text = row.text
