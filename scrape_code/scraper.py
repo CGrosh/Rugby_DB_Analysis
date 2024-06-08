@@ -11,7 +11,6 @@ class scrape_model:
         
         self.league_set = league_set
         self.season_set = season_set 
-        
         self.update_type = update_type
         
         self.headers = {
@@ -22,7 +21,7 @@ class scrape_model:
         
     
     # Util function used in schedule pulls 
-    def label_table_parse(labels, table):
+    def label_table_parse(self, labels, table):
     
         row_step = []
         for row in table:
@@ -33,9 +32,9 @@ class scrape_model:
         row_ordered = [[row_step[i-1], row_step[i]] \
                        for i in range(1, len(row_step), 2)]
 
-    return row_ordered 
+        return row_ordered 
         
-
+    
     # Takes the game and league to parse the match stats 
     def get_match_stats(self, game_id, league_id): 
 
@@ -80,7 +79,7 @@ class scrape_model:
         match_event = four_tables[0].find('tbody')
         match_event_rows = match_event.findAll('td')
 
-        group_2_ordered = label_table_parse(group_2_labels, match_event_rows)
+        group_2_ordered = self.label_table_parse(group_2_labels, match_event_rows)
 
         # GROUP 3: Kick/Pass/Run 
         home_away_total_meters = [
@@ -88,11 +87,11 @@ class scrape_model:
         ]
 
         meter_rows = four_tables[1].find('tbody').findAll('td')
-        group_3_ordered = label_table_parse(group_3_labels, meter_rows)
+        group_3_ordered = self.label_table_parse(group_3_labels, meter_rows)
 
         # GROUP 4: Attacking 
         attack_rows = stacked_rls[0].find('tbody').findAll('td')
-        group_4_ordered = label_table_parse(group_4_labels, attack_rows)
+        group_4_ordered = self.label_table_parse(group_4_labels, attack_rows)
 
         # GROUP 5: Possession and Territory 
         terr_vals = soup.findAll(
@@ -132,7 +131,7 @@ class scrape_model:
             class_='countLabel'
         )
 
-        group_8_ordered = label_table_parse(group_8_labels, disc_rows)
+        group_8_ordered = self.label_table_parse(group_8_labels, disc_rows)
 
         # Combine all group variables 
         top_data_dict = {
@@ -213,8 +212,9 @@ class scrape_model:
 
         df = pd.DataFrame(top_data_dict, index=[0])
 
-        return df    
+        return df 
     
+    # Functions below are used for gathering team and league data based on the inputs to the class 
     
     def get_teams_list(self, season, league):
         
@@ -246,14 +246,14 @@ class scrape_model:
         return team_name_link 
         
         
-    def get_schedule(self, teams_list, team, season):
+    def get_schedule(self, teams_list, team, league, season):
         
         results_base_url = "https://www.espn.co.uk/rugby/results/_/team/"
 
         team_id = teams_list[team][1]
 
         team_page_resp = requests.get(
-            results_base_url+team_id+'/season/{}'.format(season), \
+            results_base_url+team_id+'/league/{}/season/{}'.format(league, season), \
             headers=self.headers).content
         team_soup = BeautifulSoup(team_page_resp, 'html.parser')
 
@@ -320,3 +320,57 @@ class scrape_model:
         )
     
         return comb_df 
+
+    
+    
+if __name__ == '__main__':
+    
+    league_dict = {
+        'URC': 270557, 
+        'Prem': 267979,
+        'T14': 270559,
+        'RWC': 164205,
+        'RChamp': 244293,
+        # 'ChampCup': 271937,
+        # 'ChallCup': 272073,  
+        'SR': 242041, 
+        'PNCup': 256449
+    }
+
+    seasons = [
+        2018, 2019, 2020, 
+        2021, 2022, 2024
+    ]
+
+    test_game_data = pd.read_csv('test_data/urc_only_2022_teams.csv')
+    game_ids, league_ids = list(test_game_data['game_id']), list(test_game_data['league_id'])
+    
+    # munster_test = test_game_data[(test_game_data['home_team'] == 'Munster') | (test_game_data['away_team'] == 'Munster')]
+    
+    match_scrape = scrape_model(
+        league_set=[league_dict['URC']], 
+        season_set=[2022], 
+        update_type='single team',
+        date_set=None
+    )
+    
+    # munster_join_df = munster_test[['date', 'competition', 'season', 'stadium']]
+    
+    game_dfs = []
+    for game in range(len(test_game_data)):
+        
+        try:
+            game_dfs.append(match_scrape.get_match_stats(
+                game_id=test_game_data['game_id'].iloc[game],
+                league_id=test_game_data['league_id'].iloc[game],
+            ))
+        except: 
+            pdb.set_trace()
+        
+    all_teams_df = pd.concat(game_dfs, axis=0)
+    
+    pdb.set_trace()
+    
+    
+    
+    
