@@ -235,36 +235,67 @@ class scrape_model:
             for tr in row_trs:
 
                 td_start = tr.findAll('td')[0]
-                team_link = td_start.findAll('a')[0]['href']
-
-                team_name_link[td_start.findAll('a')[1].find('span').text] = [
-                    team_link,
-                    team_link[team_link.find('id/')+3:team_link.find('id/')+3+\
-                              get_index(team_link[team_link.find('id/')+3:], '/')]
-                ]
+                try:
+                    team_link = td_start.findAll('a')[0]['href']
+                    
+                    team_name_link[td_start.findAll('a')[1].find('span').text] = [
+                        team_link,
+                        team_link[team_link.find('id/')+3:team_link.find('id/')+3+\
+                                  get_index(team_link[team_link.find('id/')+3:], '/')]
+                    ]
+                except:
+                    team_link = None 
+                    team_name_link[td_start.findAll('span')[3].findAll('span')[0].text] = [
+                        team_link,
+                        None
+                    ]
     
         return team_name_link 
         
         
-    def get_schedule(self, teams_list, team, league, season):
+    def get_schedule(self, teams_list, league, season, team_input = None):
         
-        results_base_url = "https://www.espn.co.uk/rugby/results/_/team/"
+        if len(teams_list.keys()) == 0:
+            sched_dict = {}
+         
+        elif team_input is not None:
+            results_base_url = "https://www.espn.co.uk/rugby/results/_/team/"
 
-        team_id = teams_list[team][1]
+            team_id = teams_list[team][1]
 
-        team_page_resp = requests.get(
-            results_base_url+team_id+'/league/{}/season/{}'.format(league, season), \
-            headers=self.headers).content
-        team_soup = BeautifulSoup(team_page_resp, 'html.parser')
+            team_page_resp = requests.get(
+                results_base_url+team_id+'/league/{}/season/{}'.format(league, season), \
+                headers=self.headers).content
+            team_soup = BeautifulSoup(team_page_resp, 'html.parser')
 
-        full_sched = team_soup.find(id='sched-container')
+            full_sched = team_soup.find(id='sched-container')
 
-        match_months = full_sched.findAll('tbody')
+            match_months = full_sched.findAll('tbody')
+        
+        else:
+            sched_dict = {}
 
-        return match_months
+            results_base_url = "https://www.espn.co.uk/rugby/results/_/team/"
+            for team in teams_list.keys():
+
+                team_id = teams_list[team][1]
+                
+                if team_id is not None:
+
+                    team_page_resp = requests.get(
+                        results_base_url+team_id+'/league/{}/season/{}'.format(league, season), headers=self.headers).content
+                    team_soup = BeautifulSoup(team_page_resp, 'html.parser')
+
+                    full_sched = team_soup.find(id='sched-container')
+
+                    match_months = full_sched.findAll('tbody')
+
+                    sched_dict[team] = match_months 
+
+        return sched_dict
         
     
-    def parse_sched(self, sched):
+    def parse_scheds(self, sched):
         
         totals = []
         for mon in sched:
@@ -286,7 +317,6 @@ class scrape_model:
                         away_base.find('abbr').text
 
                 try:
-
                     game_link = first_row[1].findAll('span')[-1].find('a')['href']
 
                     game_id, league_id = game_link[
@@ -320,7 +350,23 @@ class scrape_model:
         )
     
         return comb_df 
+    
+    def gather_season_teams(self, league, season):
+        
+        team_links = self.get_teams_list(season, league)
+        team_sched = self.get_schedule(teams_list=team_links, league=league, season=season)
+        
+        comb_df = []
+        for team in team_sched.keys():
+            parsed_scheds = self.parse_scheds(team_sched[team])
+            parsed_scheds['season'] = season
+            comb_df.append(parsed_scheds)
 
+
+        team_dfs = pd.concat(comb_df, axis=0, ignore_index=True).drop_duplicates()
+        
+        return team_dfs
+        
     
     
 if __name__ == '__main__':
@@ -348,17 +394,17 @@ if __name__ == '__main__':
     # munster_test = test_game_data[(test_game_data['home_team'] == 'Munster') | (test_game_data['away_team'] == 'Munster')]
     
     match_scrape = scrape_model(
-        league_set=[league_dict['URC']], 
+        league_set=[league_dict['Prem']], 
         season_set=[2022], 
         update_type='single team',
         date_set=None
     )
     
+    test_data_pull = match_scrape.gather_season_teams(league_dict['Prem'], season=2022)
     # munster_join_df = munster_test[['date', 'competition', 'season', 'stadium']]
     
     game_dfs = []
     for game in range(len(test_game_data)):
-        
         try:
             game_dfs.append(match_scrape.get_match_stats(
                 game_id=test_game_data['game_id'].iloc[game],
