@@ -206,7 +206,9 @@ class scrape_model:
             'home_free_kicks_con': group_8_ordered[2][0], 
             'away_red_cards': group_8_ordered[0][1],
             'away_yellow_cards': group_8_ordered[1][1],
-            'away_free_kicks_con': group_8_ordered[2][1]
+            'away_free_kicks_con': group_8_ordered[2][1],
+            'home_penalties': int(penalty[0].text),
+            'away_penalties': int(penalty[1].text)
 
         }
 
@@ -267,9 +269,8 @@ class scrape_model:
                 results_base_url+team_id+'/league/{}/season/{}'.format(league, season), \
                 headers=self.headers).content
             team_soup = BeautifulSoup(team_page_resp, 'html.parser')
-
+            
             full_sched = team_soup.find(id='sched-container')
-
             match_months = full_sched.findAll('tbody')
         
         else:
@@ -283,11 +284,11 @@ class scrape_model:
                 if team_id is not None:
 
                     team_page_resp = requests.get(
-                        results_base_url+team_id+'/league/{}/season/{}'.format(league, season), headers=self.headers).content
+                        results_base_url+team_id+'/league/{}/season/{}'.format(league, season),
+                        headers=self.headers).content
                     team_soup = BeautifulSoup(team_page_resp, 'html.parser')
 
                     full_sched = team_soup.find(id='sched-container')
-
                     match_months = full_sched.findAll('tbody')
 
                     sched_dict[team] = match_months 
@@ -327,11 +328,9 @@ class scrape_model:
 
                 except TypeError:
                     game_link, game_id, league_id = np.nan, np.nan, np.nan 
-                
                     score = first_row[1].findAll('span')[-1].text
         
                 competition, stadium = first_row[4].text, first_row[5].text
-
                 home_score, away_score = score.split()[0], score.split()[-1]
 
                 totals.append([
@@ -354,14 +353,17 @@ class scrape_model:
     def gather_season_teams(self, league, season):
         
         team_links = self.get_teams_list(season, league)
-        team_sched = self.get_schedule(teams_list=team_links, league=league, season=season)
+        team_sched = self.get_schedule(
+            teams_list=team_links,
+            league=league,
+            season=season
+        )
         
         comb_df = []
         for team in team_sched.keys():
             parsed_scheds = self.parse_scheds(team_sched[team])
             parsed_scheds['season'] = season
             comb_df.append(parsed_scheds)
-
 
         team_dfs = pd.concat(comb_df, axis=0, ignore_index=True).drop_duplicates()
         
@@ -388,34 +390,36 @@ if __name__ == '__main__':
         2021, 2022, 2024
     ]
 
-    test_game_data = pd.read_csv('test_data/urc_only_2022_teams.csv')
-    game_ids, league_ids = list(test_game_data['game_id']), list(test_game_data['league_id'])
-    
-    # munster_test = test_game_data[(test_game_data['home_team'] == 'Munster') | (test_game_data['away_team'] == 'Munster')]
+    league_pull = league_dict['SR']
+    season_pull = 2021
     
     match_scrape = scrape_model(
-        league_set=[league_dict['Prem']], 
-        season_set=[2022], 
+        league_set=[league_pull], 
+        season_set=[season_pull], 
         update_type='single team',
         date_set=None
     )
     
-    test_data_pull = match_scrape.gather_season_teams(league_dict['Prem'], season=2022)
-    # munster_join_df = munster_test[['date', 'competition', 'season', 'stadium']]
+    test_data_pull = match_scrape.gather_season_teams(league_pull, season=season_pull)
+    print("team data for season pulled")
+    team_data_join_back = test_data_pull[['game_id', 'date', 'competition', 'season', 'stadium']]
     
     game_dfs = []
-    for game in range(len(test_game_data)):
+    for game in range(len(test_data_pull)):
         try:
-            game_dfs.append(match_scrape.get_match_stats(
-                game_id=test_game_data['game_id'].iloc[game],
-                league_id=test_game_data['league_id'].iloc[game],
-            ))
-        except: 
+            if type(test_data_pull['game_id'].iloc[game]) == type('tester'):
+                game_dfs.append(match_scrape.get_match_stats(
+                    game_id=test_data_pull['game_id'].iloc[game],
+                    league_id=test_data_pull['league_id'].iloc[game],
+                ))
+        except Exception as e: 
+            print(e)
             pdb.set_trace()
-        
+            
+    print('completed the data pull portion')
     all_teams_df = pd.concat(game_dfs, axis=0)
-    
-    pdb.set_trace()
+    all_teams_df = all_teams_df.merge(team_data_join_back, how='left', on='game_id')
+    all_teams_df.to_csv('test_data/sr_game_stats_2021.csv', index=False)
     
     
     
