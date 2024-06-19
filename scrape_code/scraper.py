@@ -3,6 +3,12 @@ import requests
 import numpy as np 
 from bs4 import BeautifulSoup
 import json, os, time, pdb 
+import sys 
+import warnings 
+import itertools 
+from tqdm import tqdm
+from argparse import ArgumentParser 
+from util_funcs import * 
 
 
 class scrape_model:
@@ -33,6 +39,9 @@ class scrape_model:
                        for i in range(1, len(row_step), 2)]
 
         return row_ordered 
+    
+    
+    def clean_match_stats(self, df):
         
     
     # Takes the game and league to parse the match stats 
@@ -373,6 +382,40 @@ class scrape_model:
     
 if __name__ == '__main__':
     
+    
+    parser = ArgumentParser(
+        description="Test Executions of Rugby Scraper Code Non-Production Version"
+    )
+    
+    parser.add_argument(
+        "--league", 
+        "-l", 
+        help="Specificy the league in which the scraper should pull from"
+    )
+    
+    parser.add_argument(
+        "--season", 
+        "-s", 
+        help="Specificy the season in which the scraper should pull from"
+    )
+    
+    parser.add_argument(
+        "--local_run", 
+        "-r", 
+        help="runtype to either pull from a local file or scrape from a "
+    )
+    
+    parser.add_argument(
+        "--filepath", 
+        "-f", 
+        help="filepath for where a local runtype should pull from"
+    )
+    
+    settings = parser.parse_args()
+    
+    pdb.set_trace()
+    
+    
     league_dict = {
         'URC': 270557, 
         'Prem': 267979,
@@ -390,8 +433,8 @@ if __name__ == '__main__':
         2021, 2022, 2024
     ]
 
-    league_pull = league_dict['SR']
-    season_pull = 2021
+    league_pull, season_pull = league_dict[settings['league']], \
+                    settings['season']
     
     match_scrape = scrape_model(
         league_set=[league_pull], 
@@ -400,27 +443,64 @@ if __name__ == '__main__':
         date_set=None
     )
     
-    test_data_pull = match_scrape.gather_season_teams(league_pull, season=season_pull)
-    print("team data for season pulled")
-    team_data_join_back = test_data_pull[['game_id', 'date', 'competition', 'season', 'stadium']]
     
-    game_dfs = []
-    for game in range(len(test_data_pull)):
-        try:
-            if type(test_data_pull['game_id'].iloc[game]) == type('tester'):
-                game_dfs.append(match_scrape.get_match_stats(
-                    game_id=test_data_pull['game_id'].iloc[game],
-                    league_id=test_data_pull['league_id'].iloc[game],
-                ))
-        except Exception as e: 
-            print(e)
-            pdb.set_trace()
-            
-    print('completed the data pull portion')
-    all_teams_df = pd.concat(game_dfs, axis=0)
-    all_teams_df = all_teams_df.merge(team_data_join_back, how='left', on='game_id')
-    all_teams_df.to_csv('test_data/sr_game_stats_2021.csv', index=False)
-    
+    if settings['local_run'] is False:
+
+        test_data_pull = match_scrape.gather_season_teams(
+            league_pull,
+            season=season_pull
+        )
+
+        print("team data for season pulled")
+        team_data_join_back = test_data_pull[
+            ['game_id', 'date', 'competition', 'season', 'stadium']
+        ]
+
+        game_dfs = []
+        for game in range(len(test_data_pull)):
+            try:
+                if type(test_data_pull['game_id'].iloc[game]) == type('tester'):
+                    game_dfs.append(match_scrape.get_match_stats(
+                        game_id=test_data_pull['game_id'].iloc[game],
+                        league_id=test_data_pull['league_id'].iloc[game],
+                    ))
+            except Exception as e: 
+                print(e)
+                pdb.set_trace()
+
+        print('completed the data pull portion')
+        all_teams_df = pd.concat(game_dfs, axis=0)
+        all_teams_df = all_teams_df.merge(team_data_join_back, how='left', on='game_id')
+        all_teams_df.to_csv('test_data/{}_game_stats_{}.csv'.format(league, season), index=False)
+        
+    else:
+        
+        test_data_pull = pd.read_csv(settings['filepath'])
+        
+        print("team data for season pulled")
+        team_data_join_back = test_data_pull[
+            ['game_id', 'date', 'competition', 'season', 'stadium']
+        ]
+
+        game_dfs = []
+        for game in range(len(test_data_pull)):
+            try:
+                if type(test_data_pull['game_id'].iloc[game]) == type('tester'):
+                    game_dfs.append(match_scrape.get_match_stats(
+                        game_id=test_data_pull['game_id'].iloc[game],
+                        league_id=test_data_pull['league_id'].iloc[game],
+                    ))
+            except Exception as e: 
+                print(e)
+                pdb.set_trace()
+
+        print('completed the data pull portion')
+        all_teams_df = pd.concat(game_dfs, axis=0)
+        all_teams_df = all_teams_df.merge(team_data_join_back, how='left', on='game_id')
+        all_teams_df.to_csv('test_data/{}_game_stats_{}.csv'.format(league, season), index=False)
+        
+        
+
     
     
     
