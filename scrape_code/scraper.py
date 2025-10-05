@@ -19,11 +19,12 @@ from selenium.webdriver.support import expected_conditions as EC
 
 class scrape_model:
     
-    def __init__(self, league_set, season_set, date_set, update_type: str):
+    def __init__(self, league_set, season_set, date_set, update_type: str, driver_type='backend'):
         
         self.league_set = league_set
         self.season_set = season_set 
         self.update_type = update_type
+        self.driver_type = driver_type 
         
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64)' + \
@@ -33,9 +34,16 @@ class scrape_model:
         
         
     def start_up_driver(self):
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        self.driver = webdriver.Chrome(options=options)
+        if self.driver_type == 'testing':
+            self.driver = webdriver.Chrome()
+        else:
+            options = webdriver.ChromeOptions()
+            options.add_argument('--headless=new')
+            options.add_argument("--window-size=1920,1080")
+            options.add_argument("--disable-gpu")
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument("user-agent={}".format(self.headers['User-Agent']))
+            self.driver = webdriver.Chrome(options=options)
         
     
     def check_driver(self):
@@ -130,13 +138,14 @@ class scrape_model:
     
     
     # Update the driver on the player data pafe to each group of player data tabs 
-    def update_driver_to_page(self, tab_labels, label):
-        try:
-            labels = tab_labels.find_elements(by=By.TAG_NAME, value='span')
-            labels[label].click()
-        except:
-            logging.error("Driver not set to page for player stat scraping")
-            return None
+    def update_driver_to_page(self, pass_tab_labels, pass_label):
+        # try:
+        labels = pass_tab_labels.find_elements(by=By.TAG_NAME, value='li')
+        print(len(labels))
+        labels[pass_label].click()
+        # except:
+            # logging.error("Driver not set to page for player stat scraping")
+            # return None
         
     
     # Internally used by get_player_stats function below 
@@ -159,6 +168,41 @@ class scrape_model:
             group_df.append([p_name, pos, p_id, team]+stats)
             
         titles = ['p_name', 'position', 'p_id', 'team'] + fields
+
+        print(titles)
+        print(group_df)
+        
+        test_df = pd.DataFrame(group_df, columns=titles)
+        
+        return test_df 
+    
+
+    # Internally used by get_player_stats function below 
+    def get_player_page_data_v2(self, table, fields, team):
+        
+        group_df = [] 
+        for player in range(1, len(table)):
+
+            player_tag = table[player].find_elements(by=By.TAG_NAME, value='td')
+            p_name = player_tag[0].text
+            href_link = None
+            p_id = np.nan
+            # p_name, href_link = player_tag[0].text, player_tag[0].get_attribute('href')
+
+
+            # p_id = href_link[href_link.find('player/')+7:href_link.find('.html')]
+            pos = table[player].find_elements(by=By.TAG_NAME, value='span')[1].text
+
+            stats = [
+                float(i.text) for i in table[player].find_elements(
+                    by=By.TAG_NAME, value='td')[1:]
+            ]
+            # print(stats)
+
+            group_df.append([p_name, pos, p_id, team]+stats)
+        print(group_df[0])
+        titles = ['p_name', 'position', 'p_id', 'team'] + fields
+        print(titles)
         test_df = pd.DataFrame(group_df, columns=titles)
         
         return test_df 
@@ -177,26 +221,32 @@ class scrape_model:
          ]
         
         page_url = "https://www.espn.co.uk/rugby/"+\
-                "playerstats?gameId={}&league={}".format(game_id, league_id)
+                "playerstats/_/gameId/{}/league/{}".format(game_id, league_id)
         self.driver.get(page_url)
         
         tab_labels = self.driver.find_element(
             by=By.CLASS_NAME, value='col-b').find_elements(
             by=By.TAG_NAME, value='div')[3]
+        print(tab_labels.find_elements(by=By.TAG_NAME, value='span'))
         
         grouped_dfs = []
         for label in range(4):
-            
-            self.update_driver_to_page(tab_labels, label)
+            print(label)
+            # self.update_driver_to_page(tab_labels, label)
+            # time.sleep(0.25)
+            click_val = tab_labels.find_elements(by=By.TAG_NAME, value='li')[label]
+            time.sleep(0.5)
+            click_val.click()
             
             group_table = self.driver.find_elements(by=By.TAG_NAME, value='table')
             home_group = group_table[0].find_elements(by=By.TAG_NAME, value='tr')
             away_group = group_table[1].find_elements(by=By.TAG_NAME, value='tr')
+            # pdb.set_trace()
             
             comb_df = pd.concat(
                 [
-                    self.get_player_page_data(home_group, fields[label], 'home'),
-                    self.get_player_page_data(away_group, fields[label], 'away')
+                    self.get_player_page_data_v2(home_group, fields[label], 'home'),
+                    self.get_player_page_data_v2(away_group, fields[label], 'away')
                 ], axis=0
             )
             grouped_dfs.append(comb_df)
@@ -212,12 +262,12 @@ class scrape_model:
     def get_match_stats(self, game_id, league_id): 
 
         # URL declaration, scraping, and initial parsing to get the tables on the page 
-        url = 'https://www.espn.com/rugby/matchstats?gameId={}&league={}'.format(
+        url = 'https://www.espn.com/rugby/matchstats/_/gameId/{}/league/{}'.format(
             game_id, league_id
         )
         response = requests.get(url, headers=self.headers).content
         soup = BeautifulSoup(response, 'html.parser')
-        tables = soup.findAll('table')
+        tables = soup.find_all('table')
 
         # Group labels 
         group_2_labels = ['Tries', 'Conversion Goals', 
@@ -232,13 +282,13 @@ class scrape_model:
         group_8_labels = ['Red Cards', 'Yellow Cards', 'Total Free Kicks Conceded']
 
         # Parsed data lists used by multiple groups 
-        four_tables = soup.findAll(
+        four_tables = soup.find_all(
             class_='sub-module equal-height countChartList height-reset'
         )
-        check_top_largeLabels = soup.findAll(
+        check_top_largeLabels = soup.find_all(
             class_="stat-graph compareLineGraph twoTeam largeLabels"
         )
-        stacked_rls = soup.findAll(class_='stacked-rl')
+        stacked_rls = soup.find_all(class_='stacked-rl')
 
         # GROUP 1: Home and Away team parsing 
         top_bar = soup.find(class_='competitors')
@@ -250,54 +300,54 @@ class scrape_model:
 
         # GROUP 2: Match Events 
         match_event = four_tables[0].find('tbody')
-        match_event_rows = match_event.findAll('td')
+        match_event_rows = match_event.find_all('td')
 
         group_2_ordered = self.label_table_parse(group_2_labels, match_event_rows)
 
         # GROUP 3: Kick/Pass/Run 
         home_away_total_meters = [
-            int(i.text) for i in check_top_largeLabels[0].findAll(class_='chartValue')
+            int(i.text) for i in check_top_largeLabels[0].find_all(class_='chartValue')
         ]
 
-        meter_rows = four_tables[1].find('tbody').findAll('td')
+        meter_rows = four_tables[1].find('tbody').find_all('td')
         group_3_ordered = self.label_table_parse(group_3_labels, meter_rows)
 
         # GROUP 4: Attacking 
-        attack_rows = stacked_rls[0].find('tbody').findAll('td')
+        attack_rows = stacked_rls[0].find('tbody').find_all('td')
         group_4_ordered = self.label_table_parse(group_4_labels, attack_rows)
 
         # GROUP 5: Possession and Territory 
-        terr_vals = soup.findAll(
+        terr_vals = soup.find_all(
             class_="stat-graph compareLineGraph twoTeam largeLabels large"
-        )[0].findAll(class_='chartValue')
+        )[0].find_all(class_='chartValue')
 
-        poss_vals = check_top_largeLabels[1].findAll(class_='chartValue')
+        poss_vals = check_top_largeLabels[1].find_all(class_='chartValue')
 
         # GROUP 6: Set Pieces 
-        sp_charts = four_tables[2].findAll(class_='countChart')
+        sp_charts = four_tables[2].find_all(class_='countChart')
 
         # list of scrums and then lineouts. 00 is home scrums, 10 is home lineouts 
         h_a_set_pieces = [
             [
-                sp_charts[0].findAll(class_='countLabel')[0].text,
-                sp_charts[0].findAll(class_='countLabel')[1].text
+                sp_charts[0].find_all(class_='countLabel')[0].text,
+                sp_charts[0].find_all(class_='countLabel')[1].text
             ],
             [
-                sp_charts[1].findAll(class_='countLabel')[0].text,
-                sp_charts[1].findAll(class_='countLabel')[1].text
+                sp_charts[1].find_all(class_='countLabel')[0].text,
+                sp_charts[1].find_all(class_='countLabel')[1].text
             ]
         ]
 
         # GROUP 7: Defending 
         # list of lists, raw tackles and then home tackles 
         tackles = [
-            four_tables[3].findAll(class_='home-team'),
-            four_tables[3].findAll(class_='away-team')
+            four_tables[3].find_all(class_='home-team'),
+            four_tables[3].find_all(class_='away-team')
         ]
 
         # GROUP 8: Discipline and Penalties 
-        disc_rows = tables[3].find('tbody').findAll('td')
-        penalty = stacked_rls[1].find(class_='countChart').findAll(
+        disc_rows = tables[3].find('tbody').find_all('td')
+        penalty = stacked_rls[1].find(class_='countChart').find_all(
             class_='countLabel'
         )
 
@@ -397,30 +447,32 @@ class scrape_model:
 
         get_index = lambda x, char: x.find(char)
 
-        tbodies = soup_team.findAll('tbody')
+        tbodies = soup_team.find('tbody')
 
         team_name_link = {}
-        for tbody in tbodies:
+        # for tbody in tbodies:
 
-            row_trs = tbody.findAll('tr')
+        row_trs = tbodies.find_all('tr')
+        print(len(row_trs))
+        for tr in row_trs:
 
-            for tr in row_trs:
-
-                td_start = tr.findAll('td')[0]
-                try:
-                    team_link = td_start.findAll('a')[0]['href']
-                    
-                    team_name_link[td_start.findAll('a')[1].find('span').text] = [
-                        team_link,
-                        team_link[team_link.find('id/')+3:team_link.find('id/')+3+\
-                                  get_index(team_link[team_link.find('id/')+3:], '/')]
-                    ]
-                except:
-                    team_link = None 
-                    team_name_link[td_start.findAll('span')[3].findAll('span')[0].text] = [
-                        team_link,
-                        None
-                    ]
+            td_start = tr.find_all('td')[0]
+            try:
+                team_link = td_start.find_all('a')[0]['href']
+                print(team_link)
+                # team_name_link[td_start.find_all('a')[1].find('span').text] = [
+                team_name_link[td_start.find_all('a')[2].text] = [
+                    team_link,
+                    team_link[team_link.find('id/')+3:team_link.find('id/')+3+\
+                                get_index(team_link[team_link.find('id/')+3:], '/')]
+                ]
+            except:
+                print(tr)
+                team_link = None 
+                team_name_link[td_start.find_all('a')[2].text] = [
+                    team_link,
+                    None
+                ]
     
         return team_name_link 
         
@@ -440,7 +492,7 @@ class scrape_model:
             team_soup = BeautifulSoup(team_page_resp, 'html.parser')
             
             full_sched = team_soup.find(id='sched-container')
-            match_months = full_sched.findAll('tbody')
+            match_months = full_sched.find_all('tbody')
         
         else:
             sched_dict = {}
@@ -456,7 +508,7 @@ class scrape_model:
                     team_soup = BeautifulSoup(team_page_resp, 'html.parser')
 
                     full_sched = team_soup.find(id='sched-container')
-                    match_months = full_sched.findAll('tbody')
+                    match_months = full_sched.find_all('tbody')
 
                     sched_dict[team] = match_months 
 
@@ -468,15 +520,15 @@ class scrape_model:
         totals = []
         for mon in sched:
 
-            rows = mon.findAll('tr')
+            rows = mon.find_all('tr')
 
             for row in rows:
 
-                first_row = row.findAll('td')
+                first_row = row.find_all('td')
                 date = first_row[0].text
 
-                home_base, away_base = first_row[1].findAll('a')[0], \
-                        first_row[2].findAll('a')[0]
+                home_base, away_base = first_row[1].find_all('a')[0], \
+                        first_row[2].find_all('a')[0]
 
                 home_team, away_team = home_base.find('span').text, \
                         away_base.find('span').text
@@ -485,15 +537,15 @@ class scrape_model:
                         away_base.find('abbr').text
 
                 try:
-                    game_link = first_row[1].findAll('span')[-1].find('a')['href']
+                    game_link = first_row[1].find_all('span')[-1].find('a')['href']
                     game_id, league_id = game_link[
                         game_link.find('Id/')+3:game_link.find('/league')], \
                     game_link[game_link.find('league/')+7:]
-                    score = first_row[1].findAll('span')[-1].find('a').text
+                    score = first_row[1].find_all('span')[-1].find('a').text
 
                 except TypeError:
                     game_link, game_id, league_id = np.nan, np.nan, np.nan 
-                    score = first_row[1].findAll('span')[-1].text
+                    score = first_row[1].find_all('span')[-1].text
         
                 competition, stadium = first_row[4].text, first_row[5].text
                 home_score, away_score = score.split()[0], score.split()[-1]
@@ -594,7 +646,8 @@ if __name__ == '__main__':
         # 'ChampCup': 271937,
         # 'ChallCup': 272073,  
         'SR': 242041, 
-        'PNCup': 256449
+        'PNCup': 256449,
+        'SixNat': 180659
     }
 
     seasons = [
@@ -621,7 +674,7 @@ if __name__ == '__main__':
                 league_pull,
                 season=season_pull
             )
-
+ 
             print("team data for season pulled")
             team_data_join_back = test_data_pull[
                 ['game_id', 'date', 'competition', 'season', 'stadium']
@@ -659,6 +712,7 @@ if __name__ == '__main__':
                     )
                 except:
                     print("Skipping game {}".format(all_teams_df.iloc[game]['game_id']))
+            pdb.set_trace()
             player_data = pd.concat(player_dfs, axis=0)
             
             pdb.set_trace()

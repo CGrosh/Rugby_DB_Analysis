@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Openside Analytics — Rugby Stats & Visuals</title>
+
+  <!-- Google font (Inter) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --primary-green: #d9f1d6;      /* semi-light green background */
+      --brand-green:  #0f5a3d;      /* dark/forest green for text & accents */
+      --muted:        #264633;      /* for subtle emphasis */
+      --card-bg:      #ffffff;
+      --radius:       12px;
+      --max-width:    1100px;
+      --space-lg:     40px;
+      --space-md:     20px;
+      --space-sm:     12px;
+      --shadow:       0 6px 18px rgba(11,60,40,0.06);
+      color-scheme: light;
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, var(--primary-green) 0%, #e8f6e9 100%);
+      color: var(--brand-green);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    .container{
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    /* Header */
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 16px;
+      padding: 8px 0 24px;
+    }
+    .brand {
+      display:flex;
+      align-items:center;
+      gap: 14px;
+    }
+    .brand .logo-mark{
+      width:64px;
+      height:64px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .brand h1{
+      margin:0;
+      font-size:20px;
+      letter-spacing:0.6px;
+      line-height:1;
+      font-weight:700;
+      text-transform:uppercase;
+    }
+    nav{
+      display:flex;
+      gap:18px;
+      align-items:center;
+      font-weight:600;
+    }
+    nav a{
+      color:var(--brand-green);
+      text-decoration:none;
+      padding:8px;
+    }
+    /* Mobile nav toggle */
+    .mobile-toggle{
+      display:none;
+      background:transparent;
+      border:0;
+      font-size:20px;
+      color:var(--brand-green);
+    }
+
+    /* Hero */
+    .hero{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: var(--space-lg);
+      align-items:start;
+      padding: 12px 0 36px;
+    }
+    .hero-inner{
+      max-width:820px;
+    }
+    .eyebrow{
+      font-size:13px;
+      font-weight:600;
+      color:var(--muted);
+      margin-bottom:8px;
+      text-transform:uppercase;
+      letter-spacing:1px;
+    }
+    .headline{
+      font-size: clamp(28px, 6vw, 64px);
+      line-height:1.02;
+      margin:0 0 14px 0;
+      font-weight:800;
+      color:var(--brand-green);
+    }
+    .sub{
+      margin:0 0 18px 0;
+      font-size:18px;
+      color:rgba(11,80,52,0.9);
+      max-width:56ch;
+    }
+
+    .cta{
+      display:inline-block;
+      background:var(--brand-green);
+      color: white;
+      padding: 12px 20px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:700;
+      box-shadow: var(--shadow);
+    }
+
+    /* Feature icons row */
+    .icons-row{
+      display:flex;
+      gap:26px;
+      margin-top: 28px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .icon{
+      width:86px;
+      height:86px;
+      border-radius:14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3));
+      box-shadow: var(--shadow);
+    }
+    .icon svg{ width:44px; height:44px; fill:none; stroke:var(--brand-green); stroke-width:10; stroke-linecap:round; stroke-linejoin:round; }
+
+    /* Latest Articles */
+    .section-title{
+      font-size:28px;
+      margin:36px 0 12px;
+      font-weight:800;
+      color:var(--brand-green);
+    }
+
+    .cards{
+      display:grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap:20px;
+    }
+    .card{
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding:20px;
+      box-shadow: var(--shadow);
+      min-height:150px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+    }
+    .card h3{
+      margin:0 0 8px 0;
+      font-size:20px;
+      color:var(--brand-green);
+    }
+    .card p{
+      margin:0 0 16px 0;
+      color: rgba(11,60,40,0.85);
+      line-height:1.35;
+    }
+    .card .btn{
+      align-self:flex-start;
+      background:var(--brand-green);
+      color:white;
+      padding:10px 14px;
+      border-radius:10px;
+      text-decoration:none;
+      font-weight:700;
+    }
+
+    /* Footer */
+    footer{
+      margin-top: 48px;
+      padding: 30px 0;
+      color: rgba(11,60,40,0.75);
+      font-size:14px;
+      border-top: 1px solid rgba(11,60,40,0.06);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px){
+      .cards{ grid-template-columns: 1fr; }
+      nav{ display:none; }
+      .mobile-toggle{ display:block; }
+      header{ gap:10px; }
+      .brand h1{ font-size:18px; }
+      .hero{ gap: 20px; }
+      .brand .logo-mark{ width:54px; height:54px; }
+    }
+
+    /* Small aesthetic tweaks for very small screens */
+    @media (max-width:420px){
+      .headline{ font-size:32px; }
+      .icon{ width:72px; height:72px; }
+      .brand h1{ font-size:16px; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container" role="document">
+    <header>
+      <div class="brand">
+        <!-- Logo variant 1 (primary) -->
+        <div class="logo-mark" aria-hidden="true">
+          <!-- Rugby ball + stitches as SVG -->
+          <svg viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Openside Analytics logo">
+            <defs>
+              <linearGradient id="lg" x1="0" x2="1">
+                <stop offset="0" stop-color="#0f5a3d" stop-opacity="1"/>
+                <stop offset="1" stop-color="#0b4b2e" stop-opacity="1"/>
+              </linearGradient>
+            </defs>
+            <ellipse cx="32" cy="32" rx="24" ry="14" fill="none" stroke="url(#lg)" stroke-width="4"/>
+            <path d="M14 22 L50 42" stroke="url(#lg)" stroke-width="4" stroke-linecap="round"/>
+            <g stroke="url(#lg)" stroke-width="3" stroke-linecap="round">
+              <line x1="29.5" y1="26.5" x2="34.5" y2="30.5"/>
+              <line x1="27.5" y1="30.5" x2="31.5" y2="33.5"/>
+              <line x1="32.5" y1="33.5" x2="36.5" y2="36.5"/>
+            </g>
+          </svg>
+        </div>
+
+        <h1>Openside Analytics</h1>
+      </div>
+
+      <nav aria-label="Primary">
+        <a href="#blog">Blog</a>
+        <a href="#visuals">Visuals</a>
+        <a href="#about">About</a>
+      </nav>
+
+      <!-- mobile toggle -->
+      <button class="mobile-toggle" aria-expanded="false" aria-controls="mobile-menu" id="mobileToggle" title="Toggle menu">
+        ☰
+      </button>
+    </header>
+
+    <!-- Mobile nav that appears on toggle -->
+    <div id="mobile-menu" style="display:none; margin-bottom:18px;">
+      <nav style="display:flex;flex-direction:column;gap:8px;">
+        <a href="#blog">Blog</a>
+        <a href="#visuals">Visuals</a>
+        <a href="#about">About</a>
+      </nav>
+    </div>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-heading">
+        <div class="hero-inner">
+          <div class="eyebrow">Insights & Visualizations</div>
+          <h2 id="hero-heading" class="headline">Interesting<br>Rugby Statistics</h2>
+          <p class="sub">Insights, data visuals and breakdowns about the game of rugby — tactics, scoring trends, position analytics and more.</p>
+          <a href="#blog" class="cta">View Blog</a>
+
+          <div class="icons-row" aria-hidden="true">
+            <div class="icon" title="trend chart">
+              <!-- up-trend chart -->
+              <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <polyline points="10 42 22 30 36 38 50 18 58 26" stroke-linejoin="round"></polyline>
+                <rect x="8" y="44" width="48" height="6" rx="2"></rect>
+              </svg>
+            </div>
+
+            <div class="icon" title="bar chart">
+              <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="10" y="34" width="8" height="18" rx="2"></rect>
+                <rect x="24" y="24" width="8" height="28" rx="2"></rect>
+                <rect x="38" y="18" width="8" height="34" rx="2"></rect>
+                <rect x="52" y="28" width="8" height="24" rx="2"></rect>
+              </svg>
+            </div>
+
+            <div class="icon" title="pie chart">
+              <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="32" cy="32" r="18"></circle>
+                <path d="M32 32 L50 28 A18 18 0 0 1 50 36 z"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="latest" id="blog">
+        <h3 id="latest" class="section-title">Latest Articles</h3>
+
+        <div class="cards" role="list">
+          <article class="card" role="listitem" aria-labelledby="a1">
+            <div>
+              <h3 id="a1">Top Scoring Trends in International Rugby</h3>
+              <p>An analysis of the most prolific try-scorers and point scorers, plus how scoring patterns changed over recent seasons.</p>
+            </div>
+            <div>
+              <a class="btn" href="#read1">Read Article</a>
+            </div>
+          </article>
+
+          <article class="card" role="listitem" aria-labelledby="a2">
+            <div>
+              <h3 id="a2">Distribution of Possession in Rugby Matches</h3>
+              <p>A data visualization showing possession distribution across positions and phases of play, with interactive charts.</p>
+            </div>
+            <div>
+              <a class="btn" href="#read2">Read Article</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Alternate logo variant & sample usage -->
+      <section style="margin-top:40px; display:flex; gap:18px; align-items:center; flex-wrap:wrap;">
+        <!-- Logo variant 2 (compact monogram + ball) -->
+        <div style="background:rgba(255,255,255,0.7); padding:14px; border-radius:12px; box-shadow: var(--shadow); display:flex; align-items:center; gap:12px;">
+          <div aria-hidden="true">
+            <!-- Compact mark: OA monogram inside ball -->
+            <svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="36" cy="36" r="30" fill="none" stroke="url(#g2)" stroke-width="4"></circle>
+              <defs>
+                <linearGradient id="g2" x1="0" x2="1">
+                  <stop offset="0" stop-color="#0f5a3d"/>
+                  <stop offset="1" stop-color="#0b4b2e"/>
+                </linearGradient>
+              </defs>
+              <text x="50%" y="50%" text-anchor="middle" alignment-baseline="middle"
+                    font-size="22" font-weight="800" fill="url(#g2)" font-family="Inter, Arial, sans-serif">OA</text>
+              <!-- small stitch -->
+              <path d="M20 26 L44 46" stroke="url(#g2)" stroke-width="3" stroke-linecap="round" />
+            </svg>
+          </div>
+          <div>
+            <div style="font-weight:800; color:var(--brand-green); letter-spacing:0.5px;">Openside Analytics</div>
+            <div style="font-size:13px; color:rgba(11,60,40,0.7);">Rugby stats, visualized</div>
+          </div>
+        </div>
+
+        <div style="flex:1; min-width:200px; color:rgba(11,60,40,0.85);">
+          <strong>Brand color</strong>
+          <div style="margin-top:8px; display:flex; gap:10px; align-items:center;">
+            <div style="width:56px; height:36px; border-radius:8px; background:var(--primary-green); box-shadow: inset 0 1px rgba(255,255,255,0.4), var(--shadow); display:flex; align-items:center; justify-content:center;">
+              <small style="color:var(--brand-green); font-weight:700;">#D9F1D6</small>
+            </div>
+            <div style="width:56px; height:36px; border-radius:8px; background:var(--brand-green); display:flex; align-items:center; justify-content:center;">
+              <small style="color:white; font-weight:700;">#0F5A3D</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; align-items:center;">
+          <div>© <strong>Openside Analytics</strong> — Data visuals & analysis for rugby</div>
+          <div style="opacity:0.85;">Built with ♥ for rugby nerds</div>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // Basic mobile toggle logic
+    (function(){
+      const toggle = document.getElementById('mobileToggle');
+      const menu = document.getElementById('mobile-menu');
+
+      toggle.addEventListener('click', function(){
+        const expanded = this.getAttribute('aria-expanded') === 'true';
+        this.setAttribute('aria-expanded', String(!expanded));
+        if(menu.style.display === 'none' || menu.style.display === ''){
+          menu.style.display = 'block';
+        } else {
+          menu.style.display = 'none';
+        }
+      });
+
+      // close mobile menu when clicking outside (small nicety)
+      document.addEventListener('click', function(e){
+        if(window.innerWidth > 900) return;
+        if(!menu.contains(e.target) && !toggle.contains(e.target) && menu.style.display === 'block'){
+          menu.style.display = 'none';
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
