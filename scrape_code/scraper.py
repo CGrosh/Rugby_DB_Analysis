@@ -15,6 +15,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import datetime
 
 
 class scrape_model:
@@ -74,7 +75,39 @@ class scrape_model:
                        for i in range(1, len(row_step), 2)]
 
         return row_ordered 
+
+
+    def get_game_date(self, game_id, league_id):
+        url = 'https://www.espn.com/rugby/matchstats/_/gameId/{}/league/{}'.format(
+            game_id, league_id
+        )
+        response = requests.get(url, headers=self.headers).content
+        soup = BeautifulSoup(response, 'html.parser')
+        date_parse = soup.find(class_='game-date-time').text
+
+        hour = date_parse[:date_parse.find(':')]
+        minute = date_parse[date_parse.find(':')+1:date_parse.find(' ')]
+        am_pm = date_parse[date_parse.find(' ')+1:date_parse.find(',')]
+
+        month_day = date_parse[date_parse.find(',')+2:-6]
+        month, day = datetime.datetime(month_day.split(' ')[0], '%b').month , month_day.split(' ')[1]
+        year = date_parse[-4:]
+
+        return datetime.date(int(year), int(month), int(day))
     
+
+    def parse_game_date(self, date_parse):
+        hour = date_parse[:date_parse.find(':')]
+        minute = date_parse[date_parse.find(':')+1:date_parse.find(' ')]
+        am_pm = date_parse[date_parse.find(' ')+1:date_parse.find(',')]
+
+        month_day = date_parse[date_parse.find(',')+2:-6]
+        month, day = datetime.datetime(month_day.split(' ')[0], '%b').month , month_day.split(' ')[1]
+        year = date_parse[-4:]
+
+        return datetime.date(int(year), int(month), int(day))
+
+
     
     def slice_prop_func(self, x, char):
         x = x.replace(" ", "")
@@ -126,13 +159,17 @@ class scrape_model:
                     str_attach = ''
                 else:
                     str_attach = 'won_'
+                try:
 
-                df['{}_{}_{}'.format(side, var_group, 'num')] = \
-                        df['{}_{}'.format(side, var_group)].apply(self.slice_prop_func, args=('/', ))
-                df['{}_{}_{}'.format(side, var_group, 'total_num')] = \
-                        df['{}_{}'.format(side, var_group)].apply(self.slice_prop_func, args=('(', ))
-                df['{}_{}_{}'.format(side, var_group, str_attach+'percent')] = \
-                        df['{}_{}'.format(side, var_group)].apply(self.slice_prop_func, args=(')', ))
+                    df['{}_{}_{}'.format(side, var_group, 'num')] = \
+                            df['{}_{}'.format(side, var_group)].apply(self.slice_prop_func, args=('/', ))
+                    df['{}_{}_{}'.format(side, var_group, 'total_num')] = \
+                            df['{}_{}'.format(side, var_group)].apply(self.slice_prop_func, args=('(', ))
+                    df['{}_{}_{}'.format(side, var_group, str_attach+'percent')] = \
+                            df['{}_{}'.format(side, var_group)].apply(self.slice_prop_func, args=(')', ))
+                except:
+                    print("new annoying error")
+                    pdb.set_trace()
                 
         return df 
     
@@ -141,7 +178,6 @@ class scrape_model:
     def update_driver_to_page(self, pass_tab_labels, pass_label):
         # try:
         labels = pass_tab_labels.find_elements(by=By.TAG_NAME, value='li')
-        print(len(labels))
         labels[pass_label].click()
         # except:
             # logging.error("Driver not set to page for player stat scraping")
@@ -168,10 +204,7 @@ class scrape_model:
             group_df.append([p_name, pos, p_id, team]+stats)
             
         titles = ['p_name', 'position', 'p_id', 'team'] + fields
-
-        print(titles)
-        print(group_df)
-        
+    
         test_df = pd.DataFrame(group_df, columns=titles)
         
         return test_df 
@@ -184,7 +217,7 @@ class scrape_model:
         for player in range(1, len(table)):
 
             player_tag = table[player].find_elements(by=By.TAG_NAME, value='td')
-            p_name = player_tag[0].text
+            p_name = table[player].find_elements(by=By.TAG_NAME, value='span')[0].text
             href_link = None
             p_id = np.nan
             # p_name, href_link = player_tag[0].text, player_tag[0].get_attribute('href')
@@ -200,9 +233,7 @@ class scrape_model:
             # print(stats)
 
             group_df.append([p_name, pos, p_id, team]+stats)
-        print(group_df[0])
         titles = ['p_name', 'position', 'p_id', 'team'] + fields
-        print(titles)
         test_df = pd.DataFrame(group_df, columns=titles)
         
         return test_df 
@@ -231,11 +262,11 @@ class scrape_model:
         
         grouped_dfs = []
         for label in range(4):
-            print(label)
+            # print(label)
             # self.update_driver_to_page(tab_labels, label)
             # time.sleep(0.25)
             click_val = tab_labels.find_elements(by=By.TAG_NAME, value='li')[label]
-            time.sleep(0.5)
+            # time.sleep(0.)
             click_val.click()
             
             group_table = self.driver.find_elements(by=By.TAG_NAME, value='table')
@@ -453,15 +484,16 @@ class scrape_model:
         # for tbody in tbodies:
 
         row_trs = tbodies.find_all('tr')
-        print(len(row_trs))
+        # print(len(row_trs))
         for tr in row_trs:
 
             td_start = tr.find_all('td')[0]
             try:
                 team_link = td_start.find_all('a')[0]['href']
-                print(team_link)
+                # print(team_link)
                 # team_name_link[td_start.find_all('a')[1].find('span').text] = [
-                team_name_link[td_start.find_all('a')[2].text] = [
+                # team_name_link[td_start.find_all('a')[2].text] = [
+                team_name_link[td_start.find_all('a')[-1].text] = [
                     team_link,
                     team_link[team_link.find('id/')+3:team_link.find('id/')+3+\
                                 get_index(team_link[team_link.find('id/')+3:], '/')]
