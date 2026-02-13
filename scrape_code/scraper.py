@@ -30,7 +30,9 @@ class scrape_model:
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64)' + \
             'AppleWebKit/537.36 (KHTML, like Gecko) ' + \
-           'Chrome/119.0.0.0 Safari/537.36'
+           'Chrome/119.0.0.0 Safari/537.36',
+           'User-Agent-Chrome-Windows': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' + \
+            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
         }
         
         
@@ -152,8 +154,14 @@ class scrape_model:
             for var_group in prop_variable_names:
                 
                 if len(df[df['{}_{}'.format(side, var_group)].str.contains('NaN')]) > 0:
-                    print('stopped on annoying rows')
-                    pdb.set_trace()
+
+                    df.loc[
+                        df['{}_{}'.format(side, var_group)].str.contains('NaN'), 
+                        '{}_{}'.format(side, var_group)] = '0/0 (0%)'
+                    # print('stopped on annoying rows')
+                    # pdb.set_trace()
+
+
 
                 if 'won' in var_group:
                     str_attach = ''
@@ -258,7 +266,7 @@ class scrape_model:
         tab_labels = self.driver.find_element(
             by=By.CLASS_NAME, value='col-b').find_elements(
             by=By.TAG_NAME, value='div')[3]
-        print(tab_labels.find_elements(by=By.TAG_NAME, value='span'))
+        # print(tab_labels.find_elements(by=By.TAG_NAME, value='span'))
         
         grouped_dfs = []
         for label in range(4):
@@ -293,7 +301,7 @@ class scrape_model:
     def get_match_stats(self, game_id, league_id): 
 
         # URL declaration, scraping, and initial parsing to get the tables on the page 
-        url = 'https://www.espn.com/rugby/matchstats/_/gameId/{}/league/{}'.format(
+        url = 'https://www.espn.co.uk/rugby/matchstats/_/gameId/{}/league/{}'.format(
             game_id, league_id
         )
         response = requests.get(url, headers=self.headers).content
@@ -697,7 +705,7 @@ if __name__ == '__main__':
         date_set=None
     )
     
-    
+    # pdb.set_trace()
     try:
         # pdb.set_trace()
         if settings.local_run is False:
@@ -728,6 +736,9 @@ if __name__ == '__main__':
             all_teams_df = pd.concat(game_dfs, axis=0)
             all_teams_df = all_teams_df.merge(team_data_join_back, how='left', on='game_id')
             all_teams_df = match_scrape.clean_match_stats(all_teams_df)
+                        
+            all_teams_df.to_csv('formed_data/game_data/{}_game_stats_{}.csv'.format(settings.league, season_pull), index=False)
+
 
             pdb.set_trace()
             
@@ -744,12 +755,11 @@ if __name__ == '__main__':
                     )
                 except:
                     print("Skipping game {}".format(all_teams_df.iloc[game]['game_id']))
-            pdb.set_trace()
+            # pdb.set_trace()
             player_data = pd.concat(player_dfs, axis=0)
+            player_data.to_csv('formed_data/player_data_mk2/{}_player_stats_{}.csv'.format(settings.league, season_pull), index=False)
             
-            pdb.set_trace()
-            
-            all_teams_df.to_csv('formed_data/game_data/{}_game_stats_{}.csv'.format(settings.league, season_pull), index=False)
+            # pdb.set_trace()
 
         else:
 
