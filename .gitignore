@@ -159,7 +159,10 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Data files to ignore 
+# Data files to ignore
 *.csv
-*.db 
+*.db
+
+# Editor settings
+.vscode/ 
 
